@@ -15,3 +15,8 @@ RefreshStorage = 0x0201007c;
 
 /* !file arm9 */
 ChangeGlobalBorderColor = 0x02027A80;
+UppercaseTextTagFatalError = 0x02021A10;
+AfterUppercaseTagIsFound = 0x02021AA0;
+GetTextSpeed = 0x02020ED0;
+DoTextLoop = 0x02020EE0;
+AnalyzeTextReturn = 0x02021EC8;
