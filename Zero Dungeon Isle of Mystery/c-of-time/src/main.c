@@ -5,6 +5,16 @@
 // `attribute((used))` is required to prevent the compiler from optimizing out the function
 // if it's only used in a patch.
 
+uint16_t text_numerator = 1;
+uint16_t text_denominator = 1;
+uint16_t text_count = 0;
+
+void ResetTextSpeedValues(void) {
+    text_numerator = 1;
+    text_denominator = 1;
+    text_count = 0;
+}
+
 // Don't make shopkeepers go Boom (TM)
 __attribute((used)) bool TryExplosionForceMiss(struct entity* target, struct move* move) {
     // There was already a validity check before this code is run, so no need to do it again
@@ -138,6 +148,63 @@ __attribute__((used)) int CustomUpdateMovePP(struct entity* monster, struct move
         }
     }
     return false;
+}
+
+/*
+    Parses custom uppercase text tags. Made by Irdkwia, ported to CoT by Adex.
+        - "VS:X:Y" ("VITESSE") modifies text speed by X/Y. For example, "[VS:1:2]" halves speed, but "[VS:4]" quadruples it. The second parameter is optional, and if missing, will default to 1.
+        - "VR" reverts text speed to normal (equivalent to "[VS:1:1]" and "[VS:1]").
+
+    To ignore a text tag in a textbox that doesn't scroll, check for dialogue_display_state::flags.timer_2.
+*/
+__attribute((used)) bool ParseCustomUppercaseTextTags(struct dialogue_display_state* state, const char* tag, const char** tag_params, int tag_param_count) {
+    int tag_vals[4] = { 0 };
+    if (tag_param_count > ARRAY_LENGTH(tag_vals))
+        tag_param_count = ARRAY_LENGTH(tag_vals);
+
+    for (int i = 0; i < tag_param_count; i++)
+        tag_vals[i] = AtoiTag(tag_params[i]);
+
+    // Checking for an actual tag...
+    if (StrcmpTag(tag, "VS")) {
+        if (state->flags.timer_2)
+            return true;
+        if (tag_param_count > 0) {
+            text_numerator = tag_vals[0];
+            text_denominator = tag_param_count == 1 ? 1 : tag_vals[1];
+            text_count = 0;
+            state->text_scrolling_done = 0;
+        }
+        return true;
+    }
+    else if (StrcmpTag(tag, "VR")) {
+        if (state->flags.timer_2)
+            return true;
+        ResetTextSpeedValues();
+        state->text_scrolling_done = 0;
+        return true;
+    }
+    return false;
+}
+
+__attribute((used)) uint32_t TryChangeTextSpeed(struct dialogue_display_state* state) {
+    unsigned long long result = _s32_div_f((state->text_speed * text_numerator + text_count), text_denominator);
+    text_count = result >> 32;
+    return (uint32_t)result;
+}
+
+__attribute((naked)) void HijackTextSpeed(void) {
+    asm("mov r0,r4");
+    asm("b TryChangeTextSpeed");
+}
+
+__attribute((naked)) void HijackTextLoop(void) {
+    asm("ldr r0,[r4,#0x80]");
+    asm("cmp r0,#0x0");
+    asm("bxne r14");
+    // Per the original comment: "Here is the fun part"
+    asm("mov r0,#0x0");
+    asm("b AnalyzeTextReturn");
 }
 
 #define ABILITY_SAND_FORCE 0x7C
