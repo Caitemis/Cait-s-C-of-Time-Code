@@ -23,6 +23,28 @@ NEW_MAX_MONEY equ 0xF423F
     // Don't Ever Forget (sealed moves)
     .org 0x02040394
         bl CannotForgetSealedMoves
+
+    .org UppercaseTextTagFatalError
+	.area 0x28
+		mov r0,r4 ; dialogue_display_state pointer
+		ldr r1,[r13,#0x70] ; tag string
+		add r2,r13,#0x74 ; the rest of the tag params
+		sub r3,r6,#0x1 ; tag count
+		bl ParseCustomUppercaseTextTags
+		cmp r0,#0x0
+		bleq CardPullOut
+		b AfterUppercaseTagIsFound
+	.endarea
+	
+	.org GetTextSpeed
+	.area 0x4
+		bleq HijackTextSpeed
+	.endarea
+	
+	.org DoTextLoop
+	.area 0x4
+		bl HijackTextLoop
+	.endarea
 .close
 
 .open "overlay11.bin", overlay11_start
