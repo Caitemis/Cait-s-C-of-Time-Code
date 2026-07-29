@@ -117,7 +117,7 @@ static void DoMoveMitosis(struct entity* user, struct entity* target, struct mov
     union damage_source source = { 0x257 };
     struct position user_pos = { user->pos.x, user->pos.y };
     struct monster* user_mon = user->info;
-    // Is the target Pokémon in the spawn list?
+    // Is the target PokÃ©mon in the spawn list?
     struct monster_spawn_entry* target_spawn_entry = NULL;
     int spawnable_monster_id;
     for (int i = 0; i < 16; i++) {
@@ -250,6 +250,24 @@ static bool MoveHealBlockVariant(struct entity* user, struct entity* target, str
     return true;
 }
 
+//Screech but it actually lowers by 2 stages instead of hard-halving Defense
+static bool MoveScreechVariant(struct entity* user, struct entity* target, struct move* move) {
+    LowerDefensiveStat(user, target, 0, 2, true, true);
+    return false;
+}
+
+//Aurora Beam variant that actually lowers Attack by 1 stage instead of halving
+static bool MoveAuroraBeamVariant(struct entity* user, struct entity* target, struct move* move) {
+    if (!DealDamage(user, target, move, 0x100, ITEM_NOTHING)) {
+        return false;
+    }
+    if (!DungeonRandOutcomeUserTargetInteraction(user, target, 10)) {
+        return false;
+    }
+    LowerOffensiveStat(user, target, 0, 1, true, true);
+    return true;
+}
+
 
 // Called when using moves. Should return true if a custom effect was applied.
 // This function is only called if the move doesn't fail due to a missing target
@@ -299,6 +317,12 @@ bool CustomApplyMoveEffect(
         return true;
     case MOVE_HEAL_BLOCK:
         data->out_dealt_damage = MoveHealBlockVariant(user, target, move);
+        return true;
+    case MOVE_SCREECH:
+        data->out_dealt_damage = MoveScreechVariant(user, target, move);
+        return true;
+    case MOVE_AURORA_BEAM:
+        data->out_dealt_damage = MoveAuroraBeamVariant(user, target, move);
         return true;
     default:
         return false;
